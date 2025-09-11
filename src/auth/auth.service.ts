@@ -34,7 +34,7 @@ export class AuthService {
             message: 'Login successful',
             data: 
             {
-                ...user,
+                ...userWithoutPassword,
                 access_token: this.signUser(user.id, user.email, user.role).access_token
             }
         };
