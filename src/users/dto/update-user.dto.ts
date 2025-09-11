@@ -2,9 +2,9 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsOptional, IsString } from 'class-validator';
 
 export enum UserRole {
-    Admin = 'Admin',
-    Moderator = 'Moderator',
-    User = 'User'
+    Admin = 'ADMIN',
+    Moderator = 'MODERATOR',
+    User = 'USER'
 }
 export class UpdateUserDto {
 
