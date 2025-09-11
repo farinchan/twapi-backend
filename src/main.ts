@@ -2,6 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as whatsapp from "wa-multi-session";
+
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -23,7 +25,20 @@ async function bootstrap() {
     jsonDocumentUrl: 'docs-json', // endpoint untuk file JSON (default: /api-json)
   });
 
+  whatsapp.onConnected((session) => {
+    console.log("connected => ", session);
+  });
 
+
+  whatsapp.onDisconnected((session) => {
+    console.log("disconnected => ", session);
+  });
+
+  whatsapp.onConnecting((session) => {
+    console.log("connecting => ", session);
+  });
+
+  whatsapp.loadSessionsFromStorage();
 
   await app.listen(process.env.PORT ?? 3000);
 }

@@ -11,7 +11,16 @@ export class AuthService {
         const user = await this.users.create({
             email, password: await bcrypt.hash(password, 10), name
         });
-        return this.signUser(user.id, user.email, user.role);
+
+        const { password: _, ...userWithoutPassword } = user;
+        return { 
+            statusCode: 201, 
+            message: 'User registered successfully', 
+            data: {
+            ...userWithoutPassword,
+            access_token: this.signUser(user.id, user.email, user.role).access_token
+            }
+        };
     }
 
     async login(email: string, password: string) {
@@ -19,7 +28,16 @@ export class AuthService {
         if (!user) throw new UnauthorizedException('Invalid credentials');
         const ok = await bcrypt.compare(password, user.password);
         if (!ok) throw new UnauthorizedException('Invalid credentials');
-        return this.signUser(user.id, user.email, user.role);
+        const { password: _, ...userWithoutPassword } = user;
+        return {
+            statusCode: 200,
+            message: 'Login successful',
+            data: 
+            {
+                ...user,
+                access_token: this.signUser(user.id, user.email, user.role).access_token
+            }
+        };
     }
 
     private signUser(sub: number, email: string, role: string) {
