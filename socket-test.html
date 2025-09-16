@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.IO Test</title>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+</head>
+
+<body>
+
+    <h1>start session</h1>
+    <div id="session_status"></div>
+    <div id="session_message"></div>
+    <img id="qr_code" src="" alt="QR Code">
+    <br>
+    <input type="text" id="sessionName" placeholder="Session Name">
+    <button id="startSessionBtn">Start WhatsApp Session</button>
+
+
+    <h1>Socket.IO Connection Test</h1>
+    <div id="status">Connecting...</div>
+    <div id="messages"></div>
+
+    <div style="margin-top: 20px;">
+        <input type="text" id="messageInput" placeholder="Enter message" style="width: 300px;">
+        <button onclick="sendMessage()">Send Message</button>
+    </div>
+
+    <div style="margin-top: 10px;">
+        <input type="text" id="roomInput" placeholder="Room name (optional)" style="width: 200px;">
+        <button onclick="joinRoom()">Join Room</button>
+    </div>
+    <script>
+        // Prevent page reload on various events
+        window.addEventListener('beforeunload', function (e) {
+            // Only show warning if there's an active session
+            const sessionName = document.getElementById('sessionName').value.trim();
+            if (sessionName) {
+                e.preventDefault();
+                e.returnValue = 'Are you sure you want to leave? This will disconnect your WhatsApp session.';
+                return e.returnValue;
+            }
+        });
+
+
+        // Koneksi ke socket server
+        const socket = io('http://localhost:3000', {
+            path: '/ws',
+            transports: ['websocket', 'polling'],
+            autoConnect: true,
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            timeout: 20000,
+            forceNew: false
+        });
+
+        const sessionStatusDiv = document.getElementById('session_status');
+        const sessionMessageDiv = document.getElementById('session_message');
+        const qrCodeDiv = document.getElementById('qr_code');
+        const sessionNameInput = document.getElementById('sessionName');
+        const startSessionBtn = document.getElementById('startSessionBtn');
+
+        startSessionBtn.addEventListener('click', function () {
+            const sessionName = sessionNameInput.value.trim();
+            console.log('Starting session with name:', sessionName);
+            if (sessionName) {
+                socket.emit('start_session', { sessionName: sessionName });
+            } else {
+                alert('Please enter a session name.');
+                qrCodeDiv.src = '';
+            }
+        });
+
+        socket.on('start_session', function (data) {
+            console.log(data);
+            sessionStatusDiv.innerHTML = `Status: ${data.session_status}`;
+            sessionMessageDiv.innerHTML = `Message: ${data.message}`;
+            if (data.qr) {
+                qrCodeDiv.src = data.qr;
+            } else {
+                qrCodeDiv.src = '';
+            }
+        });
+
+        const statusDiv = document.getElementById('status');
+        const messagesDiv = document.getElementById('messages');
+
+        // Event listeners
+        socket.on('connect', function () {
+            statusDiv.innerHTML = '<span style="color: green;">✅ Connected! Socket ID: ' + socket.id + '</span>';
+            console.log('Connected to server with ID:', socket.id);
+        });
+
+        socket.on('disconnect', function (reason) {
+            statusDiv.innerHTML = '<span style="color: orange;">⚠️ Disconnected - Reason: ' + reason + '</span>';
+            console.log('Disconnected from server. Reason:', reason);
+            // Jangan reload halaman, biarkan socket.io handle reconnection otomatis
+            // Prevent any potential page reload
+            if (reason !== 'io client disconnect') {
+                console.log('Auto-reconnecting...');
+            }
+        });
+
+        socket.on('reconnect', function (attemptNumber) {
+            statusDiv.innerHTML = '<span style="color: green;">🔄 Reconnected after ' + attemptNumber + ' attempts</span>';
+            console.log('Reconnected to server after', attemptNumber, 'attempts');
+            // Jangan reload halaman
+            // Prevent any reload on successful reconnection
+        });
+
+        socket.on('reconnect_attempt', function (attemptNumber) {
+            statusDiv.innerHTML = '<span style="color: blue;">🔄 Reconnecting... (attempt ' + attemptNumber + ')</span>';
+            console.log('Reconnection attempt:', attemptNumber);
+        });
+
+        socket.on('reconnect_error', function (error) {
+            statusDiv.innerHTML = '<span style="color: red;">❌ Reconnection Error: ' + error.message + '</span>';
+            console.error('Reconnection error:', error);
+        });
+
+        socket.on('reconnect_failed', function () {
+            statusDiv.innerHTML = '<span style="color: red;">❌ Reconnection Failed - Please refresh manually</span>';
+            console.error('Reconnection failed after maximum attempts');
+        });
+
+        socket.on('connect_error', function (error) {
+            statusDiv.innerHTML = '<span style="color: red;">❌ Connection Error: ' + error.message + '</span>';
+            console.error('Connection error:', error);
+        });
+
+        // Listen untuk message baru
+        socket.on('new_message', function (data) {
+            const messageElement = document.createElement('div');
+            messageElement.innerHTML = `<strong>${data.user}:</strong> ${data.text} <small>(${data.at})</small>`;
+            messagesDiv.appendChild(messageElement);
+        });
+
+        // Listen untuk join room confirmation
+        socket.on('joined', function (data) {
+            const messageElement = document.createElement('div');
+            messageElement.innerHTML = `<em>You joined room: ${data.room}</em>`;
+            messageElement.style.color = 'blue';
+            messagesDiv.appendChild(messageElement);
+        });
+
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const roomInput = document.getElementById('roomInput');
+
+            if (messageInput.value.trim()) {
+                const payload = {
+                    text: messageInput.value,
+                    room: roomInput.value.trim() || undefined,
+                    user: 'TestUser'
+                };
+
+                socket.emit('send_message', payload, function (response) {
+                    console.log('Message sent, server response:', response);
+                });
+
+                messageInput.value = '';
+            }
+        }
+
+        function joinRoom() {
+            const roomInput = document.getElementById('roomInput');
+            if (roomInput.value.trim()) {
+                socket.emit('join_room', roomInput.value.trim());
+            }
+        }
+
+        // Enter key untuk send message
+        document.getElementById('messageInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+
+</html>

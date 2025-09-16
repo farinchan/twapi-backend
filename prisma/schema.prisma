@@ -24,6 +24,7 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt @default(now())
   posts     Post[]
+  sessions  WhatsappSession[]
 }
 
 model Post {
@@ -37,5 +38,17 @@ model Post {
   author    User?    @relation(fields: [authorId], references: [id])
   authorId  Int?
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @updatedAt @default(now())
+}
+
+model WhatsappSession {
+  id              Int      @default(autoincrement()) @id
+  sessionName     String   @unique
+  whatsAppNumber  String   @unique
+  webhookUrl      String?
+  isActive        Boolean  @default(true)
+  userId          Int
+  user            User     @relation(fields: [userId], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt @default(now())
 }

@@ -19,6 +19,7 @@ export class AuthController {
     @ApiOkResponse({ description: 'JWT issued' })
     @Post('login')
     login(@Body() dto: LoginDto) {
+        console.log(dto);
         return this.auth.login(dto.email, dto.password);
     }
 

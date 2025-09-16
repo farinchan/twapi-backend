@@ -26,6 +26,7 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/platform-socket.io": "^11.1.6",
+    "@nestjs/platform-ws": "^11.1.6",
     "@nestjs/swagger": "^11.2.0",
     "@nestjs/websockets": "^11.1.6",
     "@prisma/client": "^6.16.0",
@@ -34,10 +35,12 @@
     "class-validator": "^0.14.2",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
+    "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.1",
-    "wa-multi-session": "^3.8.3"
+    "wa-multi-session": "^3.8.3",
+    "ws": "^8.18.3"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
@@ -52,6 +55,7 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^22.18.1",
     "@types/supertest": "^6.0.2",
+    "@types/ws": "^8.18.1",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",

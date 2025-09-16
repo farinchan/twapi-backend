@@ -25,9 +25,9 @@ export class AuthService {
 
     async login(email: string, password: string) {
         const user = await this.users.findByEmail(email);
-        if (!user) throw new UnauthorizedException('Invalid credentials');
+        if (!user) throw new UnauthorizedException('Email or password is incorrect');
         const ok = await bcrypt.compare(password, user.password);
-        if (!ok) throw new UnauthorizedException('Invalid credentials');
+        if (!ok) throw new UnauthorizedException('Email or password is incorrect - pass');
         const { password: _, ...userWithoutPassword } = user;
         return {
             statusCode: 200,
