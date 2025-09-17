@@ -8,7 +8,9 @@ import { AuthModule } from './auth/auth.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
 
 @Module({
-  imports: [UsersModule, PrismaModule, PostsModule, AuthModule, WhatsappModule],
+  imports: [UsersModule, PrismaModule, PostsModule, AuthModule, WhatsappModule,
+
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

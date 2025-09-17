@@ -13,10 +13,11 @@
     <h1>start session</h1>
     <div id="session_status"></div>
     <div id="session_message"></div>
-    <img id="qr_code" src="" alt="QR Code">
+    <img id="qr_code" src="" alt="QR Code" style="display: none; max-width: 300px;">
     <br>
     <input type="text" id="sessionName" placeholder="Session Name">
     <button id="startSessionBtn">Start WhatsApp Session</button>
+    <button id="checkSessionBtn">Check Session</button>
 
 
     <h1>Socket.IO Connection Test</h1>
@@ -33,29 +34,21 @@
         <button onclick="joinRoom()">Join Room</button>
     </div>
     <script>
-        // Prevent page reload on various events
-        window.addEventListener('beforeunload', function (e) {
-            // Only show warning if there's an active session
-            const sessionName = document.getElementById('sessionName').value.trim();
-            if (sessionName) {
-                e.preventDefault();
-                e.returnValue = 'Are you sure you want to leave? This will disconnect your WhatsApp session.';
-                return e.returnValue;
-            }
-        });
 
 
-        // Koneksi ke socket server
+        // Koneksi ke socket server dengan konfigurasi yang lebih stabil
         const socket = io('http://localhost:3000', {
             path: '/ws',
             transports: ['websocket', 'polling'],
             autoConnect: true,
             reconnection: true,
-            reconnectionAttempts: 5,
+            reconnectionAttempts: 10,
             reconnectionDelay: 1000,
             reconnectionDelayMax: 5000,
-            timeout: 20000,
-            forceNew: false
+            timeout: 30000,
+            forceNew: false,
+            upgrade: true,
+            rememberUpgrade: true
         });
 
         const sessionStatusDiv = document.getElementById('session_status');
@@ -63,43 +56,113 @@
         const qrCodeDiv = document.getElementById('qr_code');
         const sessionNameInput = document.getElementById('sessionName');
         const startSessionBtn = document.getElementById('startSessionBtn');
+        const checkSessionBtn = document.getElementById('checkSessionBtn');
 
-        startSessionBtn.addEventListener('click', function () {
+        startSessionBtn.addEventListener('click', function (e) {
+            e.preventDefault(); // Mencegah form submission yang bisa menyebabkan reload
             const sessionName = sessionNameInput.value.trim();
             console.log('Starting session with name:', sessionName);
+            
             if (sessionName) {
-                socket.emit('start_session', { sessionName: sessionName });
+                // Disable button sementara untuk mencegah multiple requests
+                startSessionBtn.disabled = true;
+                startSessionBtn.textContent = 'Starting...';
+                
+                socket.emit('start_session', { sessionName: sessionName }, function(response) {
+                    console.log('Server acknowledgment:', response);
+                    // Re-enable button setelah mendapat response
+                    startSessionBtn.disabled = false;
+                    startSessionBtn.textContent = 'Start WhatsApp Session';
+                });
             } else {
                 alert('Please enter a session name.');
                 qrCodeDiv.src = '';
             }
         });
 
+        checkSessionBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            const sessionName = sessionNameInput.value.trim();
+            console.log('Checking session with name:', sessionName);
+            
+            if (sessionName) {
+                checkSessionBtn.disabled = true;
+                checkSessionBtn.textContent = 'Checking...';
+                
+                socket.emit('check_session', { sessionName: sessionName }, function(response) {
+                    console.log('Check session response:', response);
+                    checkSessionBtn.disabled = false;
+                    checkSessionBtn.textContent = 'Check Session';
+                });
+            } else {
+                alert('Please enter a session name.');
+            }
+        });
+
         socket.on('start_session', function (data) {
-            console.log(data);
+            console.log('Received start_session event:', data);
             sessionStatusDiv.innerHTML = `Status: ${data.session_status}`;
             sessionMessageDiv.innerHTML = `Message: ${data.message}`;
+            
             if (data.qr) {
                 qrCodeDiv.src = data.qr;
+                qrCodeDiv.style.display = 'block';
             } else {
                 qrCodeDiv.src = '';
+                qrCodeDiv.style.display = 'none';
             }
+            
+            // Re-enable button if there's an error or completion
+            if (data.session_status === 'error' || data.session_status === 'connected') {
+                startSessionBtn.disabled = false;
+                startSessionBtn.textContent = 'Start WhatsApp Session';
+            }
+        });
+
+        socket.on('check_session', function (data) {
+            console.log('Received check_session event:', data);
+            sessionStatusDiv.innerHTML = `Check Status: ${data.session_status}`;
+            sessionMessageDiv.innerHTML = `Message: ${data.message}`;
+            
+            if (data.isConnected !== undefined) {
+                sessionMessageDiv.innerHTML += ` | Connected: ${data.isConnected}`;
+            }
+            
+            // Clear QR code when checking session
+            qrCodeDiv.src = '';
+            qrCodeDiv.style.display = 'none';
+            
+            // Re-enable check button
+            checkSessionBtn.disabled = false;
+            checkSessionBtn.textContent = 'Check Session';
         });
 
         const statusDiv = document.getElementById('status');
         const messagesDiv = document.getElementById('messages');
 
-        // Event listeners
+        // Event listeners untuk socket connection
         socket.on('connect', function () {
             statusDiv.innerHTML = '<span style="color: green;">✅ Connected! Socket ID: ' + socket.id + '</span>';
             console.log('Connected to server with ID:', socket.id);
         });
 
+        // Tambahkan listener untuk connection_status dari server
+        socket.on('connection_status', function (data) {
+            console.log('Connection status from server:', data);
+            statusDiv.innerHTML = '<span style="color: green;">✅ ' + data.message + ' (ID: ' + data.clientId + ')</span>';
+        });
+
         socket.on('disconnect', function (reason) {
             statusDiv.innerHTML = '<span style="color: orange;">⚠️ Disconnected - Reason: ' + reason + '</span>';
             console.log('Disconnected from server. Reason:', reason);
+            
+            // Reset button states jika terputus
+            startSessionBtn.disabled = false;
+            startSessionBtn.textContent = 'Start WhatsApp Session';
+            checkSessionBtn.disabled = false;
+            checkSessionBtn.textContent = 'Check Session';
+            
             // Jangan reload halaman, biarkan socket.io handle reconnection otomatis
-            // Prevent any potential page reload
             if (reason !== 'io client disconnect') {
                 console.log('Auto-reconnecting...');
             }
@@ -108,8 +171,12 @@
         socket.on('reconnect', function (attemptNumber) {
             statusDiv.innerHTML = '<span style="color: green;">🔄 Reconnected after ' + attemptNumber + ' attempts</span>';
             console.log('Reconnected to server after', attemptNumber, 'attempts');
-            // Jangan reload halaman
-            // Prevent any reload on successful reconnection
+            
+            // Reset button states setelah reconnect
+            startSessionBtn.disabled = false;
+            startSessionBtn.textContent = 'Start WhatsApp Session';
+            checkSessionBtn.disabled = false;
+            checkSessionBtn.textContent = 'Check Session';
         });
 
         socket.on('reconnect_attempt', function (attemptNumber) {
@@ -130,6 +197,12 @@
         socket.on('connect_error', function (error) {
             statusDiv.innerHTML = '<span style="color: red;">❌ Connection Error: ' + error.message + '</span>';
             console.error('Connection error:', error);
+            
+            // Reset button states jika ada error
+            startSessionBtn.disabled = false;
+            startSessionBtn.textContent = 'Start WhatsApp Session';
+            checkSessionBtn.disabled = false;
+            checkSessionBtn.textContent = 'Check Session';
         });
 
         // Listen untuk message baru
@@ -169,14 +242,45 @@
         function joinRoom() {
             const roomInput = document.getElementById('roomInput');
             if (roomInput.value.trim()) {
-                socket.emit('join_room', roomInput.value.trim());
+                socket.emit('join_room', roomInput.value.trim(), function(response) {
+                    console.log('Join room response:', response);
+                });
             }
         }
 
         // Enter key untuk send message
         document.getElementById('messageInput').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
+                e.preventDefault(); // Mencegah form submission
                 sendMessage();
+            }
+        });
+
+        // Enter key untuk session name
+        document.getElementById('sessionName').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Mencegah form submission
+                startSessionBtn.click();
+            }
+        });
+
+        // Prevent page reload on beforeunload
+        window.addEventListener('beforeunload', function (e) {
+            if (socket && socket.connected) {
+                socket.disconnect();
+            }
+        });
+
+        // Handle page visibility change
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                console.log('Page hidden, socket will remain connected');
+            } else {
+                console.log('Page visible again');
+                if (!socket.connected) {
+                    console.log('Attempting to reconnect...');
+                    socket.connect();
+                }
             }
         });
     </script>
