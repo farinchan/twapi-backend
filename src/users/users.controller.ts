@@ -18,7 +18,7 @@ export class UsersController {
   }
 
   @ApiOkResponse({ description: 'List of users with pagination' })
-  // @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'))
   @Get()
   findAll(
     @Query('skip') skip?: string,
