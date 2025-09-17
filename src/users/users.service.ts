@@ -2,14 +2,8 @@ import { Injectable, NotFoundException, ConflictException, InternalServerErrorEx
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { PaginatedResult, FindAllParams } from './dto/paginated-result.dto';
 import { Prisma } from '@prisma/client';
-
-interface FindAllParams {
-  skip?: number;
-  take?: number;
-  cursor?: Prisma.UserWhereUniqueInput;
-  search?: string;
-}
 
 @Injectable()
 export class UsersService {
@@ -28,31 +22,61 @@ export class UsersService {
     }
   }
 
-  async findAll(params?: FindAllParams) {
+  async findAll(params?: FindAllParams): Promise<PaginatedResult<any>> {
     try {
-      const { skip, take, cursor, search } = params || {};
-      return await this.prisma.user.findMany({
+      const { skip = 0, take = 10, cursor, search } = params || {};
+
+      const whereCondition = search
+        ? {
+          OR: [
+            { email: { contains: search, mode: Prisma.QueryMode.insensitive } },
+            { name: { contains: search, mode: Prisma.QueryMode.insensitive } }
+          ]
+        }
+        : undefined;
+
+      // Get total count for pagination
+      const total = await this.prisma.user.count({
+        where: whereCondition
+      });
+
+      // Get paginated data
+      const data = await this.prisma.user.findMany({
         skip,
         take,
         cursor,
-        where: search
-          ? {
-            OR: [
-              { email: { contains: search, mode: 'insensitive' } },
-              { name: { contains: search, mode: 'insensitive' } }
-            ]
-          }
-          : undefined,
+        where: whereCondition,
         orderBy: { id: 'desc' },
         select: {
           id: true,
           email: true,
           name: true,
           image: true,
+          createdAt: true,
+          updatedAt: true,
           // Exclude password from results
         }
       });
+
+      // Calculate pagination meta
+      const page = Math.floor(skip / take) + 1;
+      const totalPages = Math.ceil(total / take);
+      const hasNext = page < totalPages;
+      const hasPrev = page > 1;
+
+      return {
+        data,
+        meta: {
+          total,
+          page,
+          limit: take,
+          totalPages,
+          hasNext,
+          hasPrev
+        }
+      };
     } catch (error) {
+      console.error(error);
       throw new InternalServerErrorException('Failed to fetch users');
     }
   }
