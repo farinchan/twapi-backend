@@ -53,23 +53,6 @@ async function bootstrap() {
   app.useWebSocketAdapter(new SocketIOAdapter(app));
 
 
-  whatsapp.onConnected((session) => {
-    console.log("connected => ", session);
-  });
-
-
-  whatsapp.onDisconnected((session) => {
-    console.log("disconnected => ", session);
-  });
-
-  whatsapp.onConnecting((session) => {
-    console.log("connecting => ", session);
-  });
-
-  whatsapp.loadSessionsFromStorage();
-
-
-
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
   console.log(`🚀 Application is running on: http://localhost:${port}`);

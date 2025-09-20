@@ -6,12 +6,13 @@ import { PrismaModule } from './prisma/prisma.module';
 import { PostsModule } from './posts/posts.module';
 import { AuthModule } from './auth/auth.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { MinioService } from './minio/minio.service';
+
 
 @Module({
-  imports: [UsersModule, PrismaModule, PostsModule, AuthModule, WhatsappModule,
-
-  ],
+  imports: [UsersModule, PrismaModule, PostsModule, AuthModule, WhatsappModule, DashboardModule],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, MinioService],
 })
 export class AppModule {}

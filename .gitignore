@@ -57,3 +57,8 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 /generated/prisma
 /wa_credentials/*
+./wa_credentials
+./wa_credentials/*.*json
+/wa_credentials/keys/*  
+/wa_credentials/cache/*
+/wa_credentials/sessions/*

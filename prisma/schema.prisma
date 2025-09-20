@@ -52,3 +52,25 @@ model WhatsappSession {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt @default(now())
 }
+
+
+
+model whatsappMessage {
+  id            Int      @default(autoincrement()) @id
+  type          String
+  session       String
+  remoteJid     String
+  name          String?
+  message       String?
+  media_image   String? 
+  media_video   String?
+  media_audio   String?
+  media_document String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt @default(now())
+}
+
+// Add your own models here and run `npx prisma migrate dev` to create migrations for them.
+// Learn more about data modeling in the docs: https://pris.ly/d/data-modeling
+// Use Prisma Studio to view and edit data in your database: https://pris.ly/d/studio
+// Use Prisma Client to query your database in TypeScript/Node.js: https://pris.ly/d/client
